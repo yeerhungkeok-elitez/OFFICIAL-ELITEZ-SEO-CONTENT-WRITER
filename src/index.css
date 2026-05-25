@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  * {
+    @apply box-border;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-slate-100;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-300 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-400;
+  }
+}
+
+@layer components {
+  .prose-content h1 { @apply text-2xl font-bold text-slate-900 mb-4 mt-6; }
+  .prose-content h2 { @apply text-xl font-semibold text-slate-800 mb-3 mt-5; }
+  .prose-content h3 { @apply text-lg font-semibold text-slate-800 mb-2 mt-4; }
+  .prose-content p  { @apply text-slate-700 leading-7 mb-4; }
+  .prose-content ul { @apply list-disc pl-6 mb-4 space-y-1 text-slate-700; }
+  .prose-content ol { @apply list-decimal pl-6 mb-4 space-y-1 text-slate-700; }
+  .prose-content li { @apply leading-6; }
+  .prose-content strong { @apply font-semibold text-slate-900; }
+  .prose-content blockquote { @apply border-l-4 border-brand-500 pl-4 italic text-slate-600 my-4; }
+
+  .score-ring {
+    @apply relative inline-flex items-center justify-center;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+}
