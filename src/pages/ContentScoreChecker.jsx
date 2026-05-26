@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BarChart2, Zap, ChevronRight, AlertTriangle, CheckCircle, Search, Heart, Link2, TrendingUp, BookOpen, MapPin, Star, Wrench } from 'lucide-react'
+import { BarChart2, Zap, ChevronRight, AlertTriangle, CheckCircle, Search, Heart, Link2, TrendingUp, BookOpen, MapPin, Star, Wrench, Key } from 'lucide-react'
 import { useProject } from '../context/ProjectContext'
 import { scoreContent, getScoreColor } from '../lib/scoreChecker'
 import { applyFix, getFixType, FIX_LABELS } from '../lib/contentFixer'
@@ -77,18 +77,20 @@ function GradePanel({ score, publishReadiness }) {
     score >= 55 ? { label: 'Needs Major Improvement', color: 'amber', emoji: '⚠️' } :
                   { label: 'Not Ready',               color: 'red',   emoji: '🔧' }
   )
+  const isPlaceholderBlock = pr.label === 'Not Ready — Fix Placeholders'
   const msgMap = {
-    'Ready to Publish':       'This content is well-optimised across all dimensions. Ready to go live.',
-    'Needs Minor Edits':      'Strong content with a few improvements that will push it over the line.',
-    'Needs Major Improvement':'Fix the priority issues below before publishing.',
-    'Not Ready':              'Several critical SEO and content elements are missing. Review all issues.',
+    'Ready to Publish':               'This content is well-optimised across all dimensions. Ready to go live.',
+    'Needs Minor Edits':              'Strong content with a few improvements that will push it over the line.',
+    'Needs Major Improvement':        'Fix the priority issues below before publishing.',
+    'Not Ready':                      'Several critical SEO and content elements are missing. Review all issues.',
+    'Not Ready — Fix Placeholders':   'Unresolved placeholder text was detected. Replace all [bracketed] placeholders before publishing.',
   }
 
   return (
-    <div className={`flex items-center gap-5 p-5 rounded-xl border ${bg} ${border}`}>
+    <div className={`flex items-center gap-5 p-5 rounded-xl border ${isPlaceholderBlock ? 'bg-red-50 border-red-200' : `${bg} ${border}`}`}>
       <ScoreRing score={score} size={90} />
       <div>
-        <div className={`text-2xl font-bold ${text} mb-0.5`}>
+        <div className={`text-2xl font-bold ${isPlaceholderBlock ? 'text-red-600' : text} mb-0.5`}>
           {pr.emoji} {pr.label}
         </div>
         <p className="text-sm text-slate-600 leading-relaxed">{msgMap[pr.label] || ''}</p>
@@ -214,6 +216,12 @@ export default function ContentScoreChecker() {
                   <p className="text-xs text-slate-500">
                     {selectedContent.wordCount} words · Generated {new Date(selectedContent.createdAt).toLocaleDateString()}
                   </p>
+                  {selectedContent.focusKeyphrase && (
+                    <div className="flex items-center gap-1 mt-1">
+                      <Key size={11} className="text-amber-500" />
+                      <span className="text-xs text-amber-700 font-medium">{selectedContent.focusKeyphrase}</span>
+                    </div>
+                  )}
                 </div>
                 <Button onClick={handleScore} loading={scoring} icon={Zap} size="sm">
                   {activeScore ? 'Re-Score' : 'Score Now'}

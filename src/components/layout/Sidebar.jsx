@@ -2,9 +2,10 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Settings, Search, FileText,
   PenLine, BarChart2, Download, ChevronRight,
-  TrendingUp, FolderOpen, Plus
+  TrendingUp, FolderOpen, Plus, Brain
 } from 'lucide-react'
 import { useProject } from '../../context/ProjectContext'
+import { isBrandBrainConfigured } from '../../lib/brandBrain'
 
 const NAV = [
   { to: '/',        label: 'Dashboard',         icon: LayoutDashboard, step: null },
@@ -16,9 +17,14 @@ const NAV = [
   { to: '/export',  label: 'WordPress Export',  icon: Download,         step: '6' },
 ]
 
+const TOOLS_NAV = [
+  { to: '/brand-brain', label: 'Brand Brain', icon: Brain },
+]
+
 export default function Sidebar() {
   const { projects, activeProject, activeProjectId, setActiveProjectId, createProject } = useProject()
   const navigate = useNavigate()
+  const brainActive = isBrandBrainConfigured()
 
   function handleNewProject() {
     const p = createProject({ companyName: 'New Project' })
@@ -108,6 +114,39 @@ export default function Sidebar() {
           </NavLink>
         ))}
       </nav>
+
+      {/* Tools */}
+      <div className="px-3 pb-3">
+        <div className="text-slate-500 text-xs font-semibold uppercase tracking-wider px-2 mb-2">
+          Tools
+        </div>
+        {TOOLS_NAV.map(({ to, label, icon: Icon }) => (
+          <NavLink
+            key={to}
+            to={to}
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all group
+              ${isActive
+                ? 'bg-brand-500 text-white shadow-md shadow-brand-900/30'
+                : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'
+              }`
+            }
+          >
+            {({ isActive }) => (
+              <>
+                <Icon size={16} className="flex-shrink-0" />
+                <span className="flex-1">{label}</span>
+                {brainActive && to === '/brand-brain' && !isActive && (
+                  <span className="w-2 h-2 rounded-full bg-brand-400 flex-shrink-0" />
+                )}
+                {!brainActive && to === '/brand-brain' && !isActive && (
+                  <ChevronRight size={14} className="opacity-0 group-hover:opacity-60 transition-opacity" />
+                )}
+              </>
+            )}
+          </NavLink>
+        ))}
+      </div>
 
       {/* Footer */}
       <div className="px-4 py-4 border-t border-slate-700/60">

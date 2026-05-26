@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Download, Code, Tag, Image, Linkedin, FileJson, Zap, CheckCircle, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react'
+import { Download, Code, Tag, Image, Linkedin, FileJson, Zap, CheckCircle, ChevronDown, ChevronUp, AlertCircle, AlertTriangle, Brain } from 'lucide-react'
 import { useProject } from '../context/ProjectContext'
 import { buildWordPressExport } from '../lib/exportLogic'
 import Card, { CardHeader } from '../components/ui/Card'
@@ -82,7 +82,7 @@ export default function WordPressExport() {
     if (!selectedContent) return
     setBuilding(true)
     setTimeout(() => {
-      const exp = buildWordPressExport(selectedContent, relatedBrief, activeProject)
+      const exp = buildWordPressExport(selectedContent, relatedBrief, activeProject, relatedScore)
       setExportData(exp)
       setBuilding(false)
     }, 600)
@@ -204,13 +204,36 @@ export default function WordPressExport() {
 
           {exportData && !building && (
             <>
-              {/* Success bar */}
-              <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-xl">
-                <div className="flex items-center gap-2.5">
-                  <CheckCircle size={20} className="text-green-600" />
+              {/* Placeholder warning */}
+              {exportData.hasPlaceholders && (
+                <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
+                  <AlertTriangle size={18} className="text-red-500 flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-green-800 font-semibold text-sm">Export ready!</p>
-                    <p className="text-green-700 text-xs">All assets generated. Copy what you need or download the full HTML file.</p>
+                    <p className="text-red-800 font-semibold text-sm">
+                      ⚠ {exportData.placeholderCount} unresolved placeholder{exportData.placeholderCount > 1 ? 's' : ''} detected
+                    </p>
+                    <p className="text-red-700 text-xs mt-0.5">
+                      The content contains bracketed placeholder text (e.g. [add specific detail]). Do not publish until all placeholders are replaced with real content. Go to the SEO Writer to edit.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Success bar */}
+              <div className={`flex items-center justify-between p-4 rounded-xl border ${exportData.hasPlaceholders ? 'bg-amber-50 border-amber-200' : 'bg-green-50 border-green-200'}`}>
+                <div className="flex items-center gap-2.5">
+                  {exportData.hasPlaceholders
+                    ? <AlertCircle size={20} className="text-amber-500" />
+                    : <CheckCircle size={20} className="text-green-600" />
+                  }
+                  <div>
+                    <p className={`font-semibold text-sm ${exportData.hasPlaceholders ? 'text-amber-800' : 'text-green-800'}`}>
+                      {exportData.hasPlaceholders ? 'Export ready — review before publishing' : 'Export ready!'}
+                    </p>
+                    <p className={`text-xs ${exportData.hasPlaceholders ? 'text-amber-700' : 'text-green-700'}`}>
+                      All assets generated. Copy what you need or download the full HTML file.
+                      {exportData.brandBrainApplied && ' · Brand Brain context applied.'}
+                    </p>
                   </div>
                 </div>
                 <Button onClick={downloadHTML} icon={Download} variant="secondary" size="sm">
@@ -218,15 +241,26 @@ export default function WordPressExport() {
                 </Button>
               </div>
 
+              {/* Brand Brain status */}
+              {exportData.brandBrainApplied && (
+                <div className="flex items-center gap-2 p-3 bg-brand-50 border border-brand-200 rounded-xl">
+                  <Brain size={15} className="text-brand-500 flex-shrink-0" />
+                  <span className="text-xs text-brand-700 font-medium">Brand Brain context was applied when this content was generated.</span>
+                </div>
+              )}
+
               {/* Meta Tags */}
               <ExportSection title="Meta Tags" icon={Tag} badge="WordPress / Yoast / RankMath">
                 <div className="space-y-4">
                   <MetaRow label="Meta Title" value={exportData.metaTitle} charLimit={60} />
                   <MetaRow label="Meta Description" value={exportData.metaDescription} charLimit={160} />
+                  {exportData.focusKeyphrase && (
+                    <MetaRow label="Focus Keyphrase (Yoast / RankMath)" value={exportData.focusKeyphrase} />
+                  )}
                   <MetaRow label="URL Slug" value={exportData.slug} />
                 </div>
                 <p className="text-xs text-slate-500 mt-4">
-                  📌 In WordPress: Paste meta title and description into Yoast SEO or RankMath. Set the slug in the URL field.
+                  📌 In WordPress: Paste meta title and description into Yoast SEO or RankMath. Set the slug in the URL field. Enter the focus keyphrase in Yoast's "Focus keyphrase" field.
                 </p>
               </ExportSection>
 

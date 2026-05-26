@@ -541,26 +541,27 @@ function scoreHelpfulContent(content, brief, ctx) {
   }
 
   // ── Placeholder text check ─────────────────────────────────────── 8 pts ──
-  const placeholders = (body.match(/\[add |\[insert|\[your |\[timeframe\]|\[x\]|\[detail\]|\[specific|\[describe|\[example\]/gi) || []).length
+  const PLACEHOLDER_RE = /\[(?:add |insert|your |describe|specific|example\]|timeframe\]|detail\]|x\]|key |common |factors|deliverable|step |locations|satisfaction|contract |engagement |red flag|technical|simple |pricing|outcome|reporting|fundamental|realistic |commonly )/gi
+  const placeholders = (body.match(PLACEHOLDER_RE) || []).length
   if (placeholders === 0) {
     pts += 8
     strengths.push('No placeholder text detected — content appears complete.')
-  } else if (placeholders <= 3) {
+  } else if (placeholders <= 2) {
     pts += 3
     issues.push(issue(
-      `${placeholders} placeholder${placeholders > 1 ? 's' : ''} found (e.g., "[add specific detail]"). These must be filled before publishing.`,
-      `Review the content for placeholder text and replace each one with specific, relevant detail about your business or audience. Do not publish with placeholders.`,
+      `${placeholders} placeholder${placeholders > 1 ? 's' : ''} found in the content. These must be replaced with real content before publishing.`,
+      `Search for "[" in the content and replace every bracketed placeholder with specific, relevant detail about your business, audience, or market context.`,
       5, 'Helpful'
     ))
   } else {
     issues.push(issue(
-      `${placeholders} placeholder items found in the content. Publishing with unresolved placeholders is a significant content quality failure.`,
-      `Go through the content carefully and replace every placeholder with real, specific content before publishing.`,
+      `${placeholders} unresolved placeholders found in the content. Publishing with placeholder text is a significant quality failure that will hurt both SEO and reader trust.`,
+      `Go through the content and replace every bracketed placeholder with real, specific content. Do not publish until all placeholders are resolved.`,
       8, 'Helpful'
     ))
   }
 
-  return { score: Math.min(Math.round(pts), 100), issues, strengths, label: 'Helpful Content', icon: 'Heart' }
+  return { score: Math.min(Math.round(pts), 100), issues, strengths, label: 'Helpful Content', icon: 'Heart', hasPlaceholders: placeholders > 0 }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1101,6 +1102,8 @@ function scoreReadability(content, brief, ctx) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function getPublishReadiness(overall, allScores) {
+  const hasPlaceholders = allScores.some(s => s.hasPlaceholders)
+  if (hasPlaceholders) return { label: 'Not Ready — Fix Placeholders', color: 'red', emoji: '⚠️' }
   const bigIssues = allScores.flatMap(s => (s.issues || []).filter(i => i.pts >= 15)).length
   if (overall >= 82 && bigIssues === 0) return { label: 'Ready to Publish',         color: 'green',  emoji: '🚀' }
   if (overall >= 70 && bigIssues <= 2)  return { label: 'Needs Minor Edits',         color: 'blue',   emoji: '✏️' }
@@ -1140,14 +1143,18 @@ function rankPriorityFixes(allScores) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export function scoreContent(content, brief, project = null) {
-  const ctx = deriveCtx(content, brief, project)
+  // Prefer focusKeyphrase from brief; fall back to targetKeyword
+  const enrichedBrief = brief
+    ? { ...brief, targetKeyword: brief.focusKeyphrase || brief.targetKeyword }
+    : brief
+  const ctx = deriveCtx(content, enrichedBrief, project)
 
-  const seo         = scoreSEOReadiness(content, brief, ctx)
-  const helpful     = scoreHelpfulContent(content, brief, ctx)
-  const local       = scoreLocalRelevance(content, brief, ctx)
-  const links       = scoreInternalLinks(content, brief)
-  const conversion  = scoreConversion(content, brief, ctx)
-  const readability = scoreReadability(content, brief, ctx)
+  const seo         = scoreSEOReadiness(content, enrichedBrief, ctx)
+  const helpful     = scoreHelpfulContent(content, enrichedBrief, ctx)
+  const local       = scoreLocalRelevance(content, enrichedBrief, ctx)
+  const links       = scoreInternalLinks(content, enrichedBrief)
+  const conversion  = scoreConversion(content, enrichedBrief, ctx)
+  const readability = scoreReadability(content, enrichedBrief, ctx)
 
   const allScores = [seo, helpful, local, links, conversion, readability]
 

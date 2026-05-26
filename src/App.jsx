@@ -8,6 +8,7 @@ import ContentBriefGenerator from './pages/ContentBriefGenerator'
 import SEOContentWriter from './pages/SEOContentWriter'
 import ContentScoreChecker from './pages/ContentScoreChecker'
 import WordPressExport from './pages/WordPressExport'
+import BrandBrain from './pages/BrandBrain'
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
             <Route path="writer" element={<SEOContentWriter />} />
             <Route path="score" element={<ContentScoreChecker />} />
             <Route path="export" element={<WordPressExport />} />
+            <Route path="brand-brain" element={<BrandBrain />} />
           </Route>
         </Routes>
       </BrowserRouter>

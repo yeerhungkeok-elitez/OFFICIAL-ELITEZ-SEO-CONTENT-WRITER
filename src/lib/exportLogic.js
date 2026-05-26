@@ -128,9 +128,16 @@ What's your biggest challenge with ${kw}? Let us know in the comments 👇
 #SEO #${(kw || '').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('')} #ContentMarketing #BusinessGrowth`
 }
 
+// ─── Placeholder detector ─────────────────────────────────────────────────────
+
+function detectPlaceholders(body) {
+  const PLACEHOLDER_RE = /\[(?:add |insert|your |describe|specific|example\]|timeframe\]|detail\]|x\]|key |common |factors|deliverable|step |locations|satisfaction|contract |engagement |red flag|technical|simple |pricing|outcome|reporting|fundamental|realistic |commonly )/gi
+  return (body.match(PLACEHOLDER_RE) || []).length
+}
+
 // ─── WordPress Export Builder ─────────────────────────────────────────────────
 
-export function buildWordPressExport(content, brief, project) {
+export function buildWordPressExport(content, brief, project, score) {
   if (!content) return null
 
   const html          = mdToHtml(content.body || '')
@@ -139,10 +146,17 @@ export function buildWordPressExport(content, brief, project) {
   const imageAlts     = buildImageAlts(content, brief, project)
   const linkedin      = buildLinkedInCaption(content, project, brief)
 
+  const focusKeyphrase  = content.focusKeyphrase || brief?.focusKeyphrase || brief?.targetKeyword || ''
+  const placeholderCount = detectPlaceholders(content.body || '')
+  const hasPlaceholders  = placeholderCount > 0
+  const brandBrainApplied = brief?.brandBrainApplied || false
+
   const fullHtml = `<!-- SEO Growth Engine Export -->
 <!-- Meta Title: ${content.metaTitle || ''} -->
 <!-- Meta Description: ${content.metaDescription || ''} -->
+<!-- Focus Keyphrase: ${focusKeyphrase} -->
 <!-- Slug: ${brief?.slug || ''} -->
+${hasPlaceholders ? `<!-- ⚠ WARNING: ${placeholderCount} unresolved placeholder(s) detected. Do not publish without reviewing. -->` : ''}
 
 ${html}
 
@@ -157,16 +171,20 @@ ${JSON.stringify(articleSchema, null, 2)}
 -->`
 
   return {
-    metaTitle:       content.metaTitle || '',
-    metaDescription: content.metaDescription || '',
-    slug:            brief?.slug || '',
-    htmlBody:        html,
-    fullExport:      fullHtml,
-    faqSchemaJSON:   JSON.stringify(faqSchema, null, 2),
+    metaTitle:         content.metaTitle || '',
+    metaDescription:   content.metaDescription || '',
+    focusKeyphrase,
+    slug:              brief?.slug || '',
+    htmlBody:          html,
+    fullExport:        fullHtml,
+    faqSchemaJSON:     JSON.stringify(faqSchema, null, 2),
     articleSchemaJSON: JSON.stringify(articleSchema, null, 2),
     imageAlts,
-    linkedInCaption: linkedin,
-    wordCount:       content.wordCount || 0,
-    exportedAt:      new Date().toISOString(),
+    linkedInCaption:   linkedin,
+    wordCount:         content.wordCount || 0,
+    hasPlaceholders,
+    placeholderCount,
+    brandBrainApplied,
+    exportedAt:        new Date().toISOString(),
   }
 }

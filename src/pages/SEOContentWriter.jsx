@@ -1,8 +1,9 @@
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { PenLine, Zap, ChevronRight, FileText, Eye, Code, RefreshCw, AlertCircle } from 'lucide-react'
+import { PenLine, Zap, ChevronRight, FileText, Eye, Code, RefreshCw, AlertCircle, Brain, Key } from 'lucide-react'
 import { useProject } from '../context/ProjectContext'
 import { generateContent } from '../lib/contentWriter'
+import { isBrandBrainConfigured } from '../lib/brandBrain'
 import Card, { CardHeader } from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import CopyButton from '../components/ui/CopyButton'
@@ -36,6 +37,7 @@ function WordCountBadge({ count }) {
 export default function SEOContentWriter() {
   const { activeProject, saveBrief, saveContent } = useProject()
   const navigate = useNavigate()
+  const brainActive = isBrandBrainConfigured()
   const [generating, setGenerating] = useState(false)
   const [activeContentId, setActiveContentId] = useState(null)
   const [viewMode, setViewMode] = useState('preview') // 'preview' | 'markdown'
@@ -150,9 +152,22 @@ export default function SEOContentWriter() {
                 <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide mb-2">Brief Summary</p>
                 <div className="space-y-2 text-sm">
                   <div><span className="text-slate-500">Target:</span> <span className="font-medium capitalize">{selectedBrief.targetKeyword}</span></div>
+                  {selectedBrief.focusKeyphrase && selectedBrief.focusKeyphrase !== selectedBrief.targetKeyword && (
+                    <div className="flex items-center gap-1.5">
+                      <Key size={11} className="text-amber-500" />
+                      <span className="text-slate-500 text-xs">Focus:</span>
+                      <span className="text-xs font-medium text-amber-700">{selectedBrief.focusKeyphrase}</span>
+                    </div>
+                  )}
                   <div><span className="text-slate-500">Page type:</span> <span>{selectedBrief.pageType}</span></div>
                   <div><span className="text-slate-500">Word target:</span> <span>{selectedBrief.wordCountTarget}</span></div>
                   <div><span className="text-slate-500">Audience:</span> <span className="line-clamp-2">{selectedBrief.audience}</span></div>
+                  {brainActive && (
+                    <div className="flex items-center gap-1.5 pt-1">
+                      <Brain size={11} className="text-brand-500" />
+                      <span className="text-xs text-brand-600 font-medium">Brand Brain active</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-4">
@@ -252,6 +267,13 @@ export default function SEOContentWriter() {
                     <CopyButton text={selectedContent.metaDescription} size="xs" />
                   </div>
                   <p>{selectedContent.metaDescription}</p>
+                  {selectedContent.focusKeyphrase && (
+                    <div className="pt-1 flex items-center gap-2">
+                      <Key size={11} className="text-amber-400" />
+                      <span className="text-slate-500">Focus Keyphrase: </span>
+                      <span className="text-amber-400 font-medium">{selectedContent.focusKeyphrase}</span>
+                    </div>
+                  )}
                   <div className="pt-1">
                     <span className="text-slate-500">Slug: </span>
                     <code className="text-brand-400">/blog/{selectedContent.slug}</code>

@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FileText, Zap, ChevronRight, ChevronDown, ChevronUp, ExternalLink, Link2, Tag } from 'lucide-react'
+import { FileText, Zap, ChevronRight, ChevronDown, ChevronUp, ExternalLink, Link2, Tag, Brain, Key } from 'lucide-react'
 import { useProject } from '../context/ProjectContext'
 import { generateBrief } from '../lib/briefLogic'
+import { isBrandBrainConfigured } from '../lib/brandBrain'
 import Card, { CardHeader } from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import CopyButton from '../components/ui/CopyButton'
@@ -34,7 +35,23 @@ function BriefCard({ brief, project }) {
         <FunnelBadge funnel={brief.funnel} />
         <Badge label={brief.pageType} color="purple" />
         <Badge label={brief.wordCountTarget} color="slate" />
+        {brief.brandBrainApplied && (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-brand-100 text-brand-700 text-xs rounded-full border border-brand-200 font-medium">
+            <Brain size={11} /> Brand Brain Applied
+          </span>
+        )}
       </div>
+
+      {/* Focus Keyphrase */}
+      {brief.focusKeyphrase && (
+        <div className="flex items-center gap-2 p-2.5 bg-amber-50 border border-amber-200 rounded-lg">
+          <Key size={13} className="text-amber-600 flex-shrink-0" />
+          <span className="text-xs text-amber-700">
+            <span className="font-semibold">Focus Keyphrase:</span> {brief.focusKeyphrase}
+          </span>
+          <CopyButton text={brief.focusKeyphrase} size="xs" />
+        </div>
+      )}
 
       {/* H1 */}
       <Section title="Suggested H1" defaultOpen={true}>

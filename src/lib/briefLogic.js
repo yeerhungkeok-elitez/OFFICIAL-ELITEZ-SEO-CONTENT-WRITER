@@ -53,30 +53,84 @@ function buildFAQs(keyword, intent, funnel, services, audience, companyName) {
   const company = companyName || 'our team'
 
   const tofuFAQs = [
-    { q: `What is ${kw}?`,                        a: `${titleCase(kw)} refers to the practice of [add your definition here]. For ${aud}, it means [specific impact].` },
-    { q: `Why is ${svc} important for ${aud}?`,   a: `${titleCase(svc)} helps ${aud} [key benefit]. Without it, [common problem].` },
-    { q: `How long does ${svc} take to set up?`,  a: `Most ${aud} can get started within [timeframe]. ${company} typically onboards new clients in [specific time].` },
-    { q: `How much does ${svc} cost?`,             a: `Costs vary based on [factors]. ${company} offers [pricing overview]. Contact us for a tailored quote.` },
-    { q: `Can I do ${kw} in-house or do I need help?`, a: `Many ${aud} start in-house, but as you scale, working with a specialist like ${company} saves time and reduces errors.` },
-    { q: `What results can I expect from ${svc}?`,  a: `Results depend on your starting point, but ${aud} working with ${company} typically see [outcome] within [timeframe].` },
+    {
+      q: `What is ${kw}?`,
+      a: `${titleCase(kw)} is the process of systematically managing and optimising ${svc} to help ${aud} achieve consistent, scalable results. Done well, it combines clear processes, the right tools, and experienced oversight to reduce errors, save time, and support business growth.`,
+    },
+    {
+      q: `Why is ${svc} important for ${aud}?`,
+      a: `${titleCase(svc)} gives ${aud} a reliable foundation to operate from. Without it, common problems include manual errors, missed deadlines, inconsistent execution, and compliance risk. With a well-structured ${svc} approach, your team spends less time firefighting and more time on work that drives results.`,
+    },
+    {
+      q: `How long does ${svc} take to set up?`,
+      a: `Most ${aud} can see meaningful improvements within the first 30–60 days. A full ${svc} foundation — including process documentation, team alignment, and system setup — typically takes 60–90 days to implement properly. ${company} works with clients to phase this in a way that minimises disruption.`,
+    },
+    {
+      q: `How much does ${svc} cost?`,
+      a: `Costs vary based on your company size, the scope of work, and the level of support you need. Most ${aud} find that the cost is significantly offset by time saved, errors reduced, and compliance risk eliminated. Contact ${company} for a no-obligation quote tailored to your situation.`,
+    },
+    {
+      q: `Can I do ${kw} in-house or do I need help?`,
+      a: `Many ${aud} start in-house, and some manage it effectively at small scale. The challenge tends to emerge as headcount grows — when processes multiply and the cost of errors increases. Working with a specialist like ${company} gives you access to proven frameworks and experienced oversight without having to build that capability from scratch.`,
+    },
+    {
+      q: `What results can I expect from ${svc}?`,
+      a: `${aud} working with ${company} typically see measurable improvements in operational efficiency within the first two to three months — including reduced time spent on administration, fewer errors, and clearer visibility across the function. Specific outcomes depend on your starting point, which is why ${company} begins every engagement with a baseline review.`,
+    },
   ]
 
   const mofuFAQs = [
-    { q: `What should I look for in ${kw}?`,            a: `Focus on [key criterion 1], [key criterion 2], and [key criterion 3]. Avoid providers who [red flag].` },
-    { q: `How does ${company} compare to alternatives?`, a: `Unlike generic options, ${company} specialises in ${svc} for ${aud} — meaning you get [specific advantage].` },
-    { q: `What's the typical contract or commitment?`,   a: `${company} offers [contract type]. Most clients start with [engagement model] before scaling.` },
-    { q: `Do I need any technical knowledge?`,           a: `No. ${company} handles [technical aspects]. You just need to [simple requirement].` },
-    { q: `What is your onboarding process?`,             a: `We start with a discovery call, then [step 2], then [step 3]. You'll have a clear roadmap within [timeframe].` },
-    { q: `Can you work with my existing tools?`,        a: `Yes. ${company} integrates with [common tools]. We'll assess your current setup in our initial consultation.` },
+    {
+      q: `What should I look for in ${kw}?`,
+      a: `Focus on three things: genuine fit for your size and industry, quality of implementation support (not just the demo), and transparent communication about limitations. Avoid providers who have a confident answer for every question — the best partners are honest about where they're strongest and where they're not.`,
+    },
+    {
+      q: `How does ${company} compare to alternatives?`,
+      a: `Unlike generic solutions, ${company} specialises in ${svc} for ${aud}. That focus means faster time to value, fewer translation layers, and a team that understands the specific challenges you're dealing with — not a playbook built for a different type of business.`,
+    },
+    {
+      q: `What's the typical contract or commitment?`,
+      a: `${company} offers flexible engagement models — from project-based work to ongoing retainers — depending on your needs and growth stage. Most clients start with a scoped engagement to establish a foundation, then move to ongoing support. There are no long lock-in periods — we'd rather earn the relationship.`,
+    },
+    {
+      q: `Do I need any technical knowledge?`,
+      a: `No. ${company} handles the technical setup and configuration. What we need from you is a clear picture of your current situation, access to the right people in your organisation, and willingness to be involved in the discovery and setup phases. Everything else is our responsibility.`,
+    },
+    {
+      q: `What is your onboarding process?`,
+      a: `We start with a discovery call to understand your current situation and goals. From there, we deliver a baseline assessment and implementation roadmap within the first two weeks. You'll know exactly what's happening, in what order, and why — before we touch anything.`,
+    },
+    {
+      q: `Can you work with my existing tools?`,
+      a: `Yes. ${company} assesses your existing tech stack in the initial consultation and builds an approach that works with what you already have wherever possible. We flag any gaps or conflicts early — so there are no integration surprises mid-engagement.`,
+    },
   ]
 
   const bofuFAQs = [
-    { q: `How quickly can we get started?`,             a: `Once you reach out, we typically schedule a discovery call within [timeframe] and begin work within [timeframe].` },
-    { q: `What's included in your ${svc} package?`,    a: `Our ${svc} includes [deliverable 1], [deliverable 2], and [deliverable 3]. We'll customise based on your needs.` },
-    { q: `Do you offer a free consultation?`,           a: `Yes. Book a free 30-minute strategy call with ${company} to discuss your ${svc} needs and get a tailored plan.` },
-    { q: `What happens if I'm not satisfied?`,          a: `${company} works closely with clients throughout every engagement. We have a [satisfaction policy].` },
-    { q: `Do you work with businesses in [country]?`,  a: `Yes, ${company} works with ${aud} across [locations]. [Details about local support or remote capabilities].` },
-    { q: `How do you measure success?`,                 a: `We agree on KPIs at the start — typically [example metrics] — and report on progress [reporting cadence].` },
+    {
+      q: `How quickly can we get started?`,
+      a: `Once you reach out, we typically schedule a discovery call within 2–3 business days and can begin onboarding within two weeks of agreeing on scope. For clients with urgent timelines, we discuss what's feasible in the initial conversation.`,
+    },
+    {
+      q: `What's included in your ${svc} package?`,
+      a: `Our ${svc} engagement includes an initial baseline assessment, a customised implementation plan, hands-on delivery support, regular progress reviews, and a dedicated point of contact throughout. The exact scope is agreed before we start — no surprises mid-engagement.`,
+    },
+    {
+      q: `Do you offer a free consultation?`,
+      a: `Yes. Book a free 30-minute call with ${company} to discuss your current ${svc} situation and what a realistic improvement looks like. There's no obligation and no sales pressure — just a focused conversation about whether there's a genuine fit.`,
+    },
+    {
+      q: `What happens if I'm not satisfied?`,
+      a: `${company} works closely with clients throughout every engagement. If something isn't tracking as expected, we surface it early and adjust — we don't wait for a milestone to flag a problem. Our goal is long-term partnership, not a single transaction.`,
+    },
+    {
+      q: `Do you work with businesses in multiple locations?`,
+      a: `Yes. ${company} works with ${aud} across multiple locations, including businesses managing multi-country operations or teams spread across Southeast Asia. We'll discuss your specific geographic context in the discovery call.`,
+    },
+    {
+      q: `How do you measure success?`,
+      a: `We agree on specific, measurable KPIs at the start of every engagement — typically covering time saved, error rate reduction, and operational consistency. We report on these regularly throughout the engagement so you always have a clear picture of progress.`,
+    },
   ]
 
   if (funnel === 'TOFU') return tofuFAQs
@@ -91,11 +145,9 @@ function buildMeta(keyword, companyName, country) {
   const company = companyName || 'Your Company'
   const loc     = country && country !== 'Global / Remote' ? ` in ${country}` : ''
 
-  // Keep title ≤ 60 chars
   let title = `${kw} | ${company}`
   if (title.length > 60) title = `${kw} — ${company}`.slice(0, 57) + '...'
 
-  // Keep description ≤ 160 chars
   let desc = `Discover how ${kw.toLowerCase()} can help your business grow${loc}. Expert guidance from ${company}. Read the full guide.`
   if (desc.length > 160) desc = desc.slice(0, 157) + '...'
 
@@ -138,27 +190,19 @@ function buildInternalLinks(project, keyword) {
 
   svcList.forEach(svc => {
     suggestions.push({
-      anchorText:  `${svc} services`,
+      anchorText:   `${svc} services`,
       suggestedURL: `/services/${slugify(svc)}`,
-      relevance:   'High',
+      relevance:    'High',
     })
     suggestions.push({
-      anchorText:  `How ${svc} works`,
+      anchorText:   `How ${svc} works`,
       suggestedURL: `/blog/how-${slugify(svc)}-works`,
-      relevance:   'Medium',
+      relevance:    'Medium',
     })
   })
 
-  suggestions.push({
-    anchorText:  'Contact us',
-    suggestedURL: '/contact',
-    relevance:   'High',
-  })
-  suggestions.push({
-    anchorText:  'About us',
-    suggestedURL: '/about',
-    relevance:   'Low',
-  })
+  suggestions.push({ anchorText: 'Contact us',  suggestedURL: '/contact', relevance: 'High' })
+  suggestions.push({ anchorText: 'About us',     suggestedURL: '/about',   relevance: 'Low'  })
 
   return suggestions.slice(0, 6)
 }
@@ -182,19 +226,8 @@ function buildLSI(keyword, services) {
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 export function generateBrief(keywordObj, project) {
-  const {
-    keyword,
-    intent,
-    funnel,
-    pageType,
-  } = keywordObj
-
-  const {
-    companyName = '',
-    services    = '',
-    targetAudience = '',
-    country     = '',
-  } = project
+  const { keyword, intent, funnel, pageType } = keywordObj
+  const { companyName = '', services = '', targetAudience = '', country = '' } = project
 
   const primaryAud = targetAudience.split(',')[0]?.trim() || 'your target audience'
   const h2s        = buildH2s(keyword, intent, funnel, services, targetAudience)
@@ -211,24 +244,26 @@ export function generateBrief(keywordObj, project) {
     : `${titleCase(keyword)}: What It Is and How It Helps ${titleCase(primaryAud)}`
 
   return {
-    id:            generateId(),
-    keywordId:     keywordObj.id,
-    targetKeyword: keyword,
-    lsiKeywords:   lsi,
+    id:             generateId(),
+    keywordId:      keywordObj.id,
+    targetKeyword:  keyword,
+    focusKeyphrase: keyword,
+    lsiKeywords:    lsi,
     intent,
     funnel,
     pageType,
-    audience:      targetAudience,
+    audience:       targetAudience,
     suggestedH1,
     h2s,
     faqs,
     cta,
-    internalLinks: links,
+    internalLinks:  links,
     meta,
-    slug:          slugify(keyword),
-    wordCountTarget: funnel === 'TOFU' ? '1,200–1,800 words' : funnel === 'MOFU' ? '1,000–1,500 words' : '800–1,200 words',
-    readabilityTarget: 'Grade 8–10 reading level. Short paragraphs (3–4 sentences max). Use bullet lists for 3+ items.',
-    createdAt:     new Date().toISOString(),
+    slug:           slugify(keyword),
+    wordCountTarget:    funnel === 'TOFU' ? '1,200–1,800 words' : funnel === 'MOFU' ? '1,000–1,500 words' : '800–1,200 words',
+    readabilityTarget:  'Grade 8–10 reading level. Short paragraphs (3–4 sentences max). Use bullet lists for 3+ items.',
+    brandBrainApplied:  false,
+    createdAt:      new Date().toISOString(),
   }
 }
 
