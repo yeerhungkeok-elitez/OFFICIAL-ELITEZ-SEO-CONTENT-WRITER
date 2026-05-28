@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BarChart2, Zap, ChevronRight, AlertTriangle, CheckCircle, Search, Heart, Link2, TrendingUp, BookOpen, MapPin, Star, Wrench, Key } from 'lucide-react'
+import { BarChart2, Zap, ChevronRight, AlertTriangle, CheckCircle, Search, Heart, Link2, TrendingUp, BookOpen, MapPin, Star, Wrench, Key, PenLine, RefreshCw } from 'lucide-react'
 import { useProject } from '../context/ProjectContext'
 import { scoreContent, getScoreColor } from '../lib/scoreChecker'
 import { applyFix, getFixType, FIX_LABELS, autoFix, fixCriticalIssues } from '../lib/contentFixer'
@@ -125,6 +125,26 @@ export default function ContentScoreChecker() {
   const relatedBrief    = briefs.find(b => b.id === selectedContent?.briefId) || null
   const activeScore     = scores.find(s => s.id === activeScoreId) ||
     scores.find(s => s.contentId === selectedContent?.id) || null
+
+  // Stale score: content was edited after the last score was calculated
+  const contentUpdatedAt = selectedContent?.updatedAt || selectedContent?.createdAt
+  const scoreIsStale     = contentUpdatedAt && activeScore?.scoredAt
+    ? contentUpdatedAt > activeScore.scoredAt
+    : false
+
+  // Auto-score when content is newer than the existing score (e.g. after editing draft)
+  useEffect(() => {
+    if (!selectedContent || scoring) return
+    const updatedAt = selectedContent.updatedAt
+    if (!updatedAt) return                           // never been edited — no auto-trigger
+    const lastScore = scores.find(s => s.contentId === selectedContent.id)
+    if (!lastScore || updatedAt > lastScore.scoredAt) {
+      // Small delay so React finishes rendering first
+      const t = setTimeout(handleScore, 300)
+      return () => clearTimeout(t)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedContent?.id, selectedContent?.updatedAt])
 
   function handleScore() {
     if (!selectedContent) return
@@ -312,22 +332,45 @@ export default function ContentScoreChecker() {
             </div>
 
             {selectedContent && (
-              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <div>
-                  <p className="text-sm font-semibold text-slate-700 capitalize">{selectedContent.targetKeyword}</p>
-                  <p className="text-xs text-slate-500">
-                    {selectedContent.wordCount} words · Generated {new Date(selectedContent.createdAt).toLocaleDateString()}
-                  </p>
-                  {selectedContent.focusKeyphrase && (
-                    <div className="flex items-center gap-1 mt-1">
-                      <Key size={11} className="text-amber-500" />
-                      <span className="text-xs text-amber-700 font-medium">{selectedContent.focusKeyphrase}</span>
-                    </div>
-                  )}
+              <div className="space-y-2">
+                {/* Stale score banner */}
+                {scoreIsStale && !scoring && (
+                  <div className="flex items-center gap-2.5 px-3 py-2 bg-amber-50 border border-amber-200 rounded-xl">
+                    <RefreshCw size={14} className="text-amber-500 flex-shrink-0" />
+                    <p className="text-xs text-amber-800 flex-1">
+                      <span className="font-semibold">Draft was edited</span> after this score was calculated. Re-scoring now…
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-700 capitalize">{selectedContent.targetKeyword}</p>
+                    <p className="text-xs text-slate-500">
+                      {selectedContent.wordCount} words
+                      {selectedContent.updatedAt
+                        ? ` · Edited ${new Date(selectedContent.updatedAt).toLocaleTimeString()}`
+                        : ` · Generated ${new Date(selectedContent.createdAt).toLocaleDateString()}`}
+                    </p>
+                    {selectedContent.focusKeyphrase && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <Key size={11} className="text-amber-500" />
+                        <span className="text-xs text-amber-700 font-medium">{selectedContent.focusKeyphrase}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => navigate('/writer')}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-all"
+                    >
+                      <PenLine size={12} /> Edit Draft
+                    </button>
+                    <Button onClick={handleScore} loading={scoring} icon={Zap} size="sm">
+                      {activeScore ? 'Re-Score' : 'Score Now'}
+                    </Button>
+                  </div>
                 </div>
-                <Button onClick={handleScore} loading={scoring} icon={Zap} size="sm">
-                  {activeScore ? 'Re-Score' : 'Score Now'}
-                </Button>
               </div>
             )}
           </Card>
@@ -466,12 +509,12 @@ export default function ContentScoreChecker() {
                 </div>
               )}
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <Button variant="primary" onClick={() => navigate('/export')} iconRight={ChevronRight}>
                   Next: WordPress Export
                 </Button>
-                <Button variant="secondary" onClick={() => navigate('/writer')}>
-                  Back to Editor
+                <Button variant="secondary" onClick={() => navigate('/writer')} icon={PenLine}>
+                  Edit Draft
                 </Button>
               </div>
             </>
