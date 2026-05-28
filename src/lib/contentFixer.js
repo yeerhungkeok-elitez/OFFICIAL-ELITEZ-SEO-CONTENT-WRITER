@@ -160,14 +160,26 @@ function fixAddLocalContext(content, brief, project) {
 
   if (!country) return content
 
-  // For SG: skip if already has enough SG references
   if (isSG) {
-    const sgMentions = (body.match(/\b(singapore|sgd|mom|cpf|iras|psg|edg|pdpa|imda)\b/gi) || []).length
-    if (sgMentions >= 6) return content
+    // Skip only if the dedicated section was already added by this fixer
+    if (/##\s+what\s+singapore\s+businesses\s+need\s+to\s+know/i.test(body)) return content
+
+    // Skip if article already has comprehensive reg + grant coverage (all key terms present)
+    const hasDeepReg =
+      /\b(employment act)\b/i.test(body) &&
+      /\b(fair consideration framework|fcf)\b/i.test(body) &&
+      /\b(foreign worker levy)\b/i.test(body)
+    const hasDeepGrants =
+      /\b(productivity solutions grant|psg)\b/i.test(body) &&
+      /\b(enterprise development grant|edg)\b/i.test(body) &&
+      /\bskillsfuture\b/i.test(body)
+    if (hasDeepReg && hasDeepGrants) return content
   } else {
-    // Non-SG: skip if country mentioned 3+ times already
-    const mentions = (body.match(new RegExp(`\\b${country}\\b`, 'gi')) || []).length
-    if (mentions >= 3) return content
+    // Non-SG: skip if dedicated section or 5+ country mentions already exist
+    const countryEsc = country.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    if (new RegExp(`##\\s+what\\s+${countryEsc}\\s+businesses`, 'i').test(body)) return content
+    const mentions = (body.match(new RegExp(`\\b${countryEsc}\\b`, 'gi')) || []).length
+    if (mentions >= 5) return content
   }
 
   const keyword  = brief?.targetKeyword || content.targetKeyword || 'this service'
@@ -199,23 +211,32 @@ function fixLongParagraphs(content, brief, project) {
   let changed  = false
 
   const fixed = blocks.flatMap(block => {
-    if (block.trim().startsWith('#') || countWords(block) <= 90) return [block]
+    const trimmed = block.trim()
+    if (trimmed.startsWith('#')) return [block]
+    if (countWords(block) <= 75) return [block]   // lowered from 90
 
-    // Match sentences (greedy up to punctuation)
-    const sentences = block.match(/[^.!?]*[.!?]+(?:\s+|$)/g)
-    if (!sentences || sentences.length < 3) return [block]
+    // Bullet list block — split at item midpoint instead of sentence split
+    const lines   = block.split('\n')
+    const bullets = lines.filter(l => /^[ \t]*[-*]\s/.test(l))
+    if (bullets.length >= 3) {
+      const mid  = Math.ceil(lines.length / 2)
+      const p1   = lines.slice(0, mid).join('\n').trim()
+      const p2   = lines.slice(mid).join('\n').trim()
+      if (p1 && p2) { changed = true; return [p1, p2] }
+      return [block]
+    }
 
-    // Split near the midpoint by word count
+    // Prose paragraph — split at sentence boundary near midpoint
+    const sentences = block.match(/[^.!?]*[.!?]+(?:\s+|$)/g) || []
+    if (sentences.length < 2) return [block]   // need at least 2 sentences
+
     const total = countWords(block)
     let acc      = 0
     let splitIdx = Math.ceil(sentences.length / 2)
 
     for (let i = 0; i < sentences.length; i++) {
       acc += countWords(sentences[i])
-      if (acc >= total / 2) {
-        splitIdx = i + 1
-        break
-      }
+      if (acc >= total / 2) { splitIdx = i + 1; break }
     }
 
     if (splitIdx <= 0 || splitIdx >= sentences.length) return [block]

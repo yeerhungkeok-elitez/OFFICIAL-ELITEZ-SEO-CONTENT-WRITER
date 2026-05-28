@@ -113,6 +113,9 @@ export default function ContentScoreChecker() {
   const [autoFixing, setAutoFixing]     = useState(false)
   const [fixLog, setFixLog]             = useState([])   // fix history for current session
   const [scoreBefore, setScoreBefore]   = useState(null) // score before last auto-fix batch
+  const [fixStatus, setFixStatus]       = useState({})   // { [fixIndex]: { changed, wordsAdded, label } }
+  const [debugLog, setDebugLog]         = useState([])   // dev debug entries
+  const [showDebug, setShowDebug]       = useState(false)
 
   const contents = activeProject?.generatedContent || []
   const briefs   = activeProject?.briefs || []
@@ -138,18 +141,51 @@ export default function ContentScoreChecker() {
     const fixType = getFixType(fix)
     if (!fixType || !selectedContent) return
     setApplying(prev => ({ ...prev, [idx]: true }))
+    // Clear previous status for this index
+    setFixStatus(prev => ({ ...prev, [idx]: null }))
+
     setTimeout(() => {
-      const updated  = applyFix(fixType, selectedContent, relatedBrief, activeProject)
+      const bodyBefore  = selectedContent.body || ''
+      const wBefore     = selectedContent.wordCount || 0
+      const updated     = applyFix(fixType, selectedContent, relatedBrief, activeProject)
+      const changed     = updated.body !== bodyBefore
+        || updated.metaTitle !== selectedContent.metaTitle
+        || updated.metaDescription !== selectedContent.metaDescription
+      const wAfter      = updated.wordCount || 0
+      const wordsAdded  = wAfter - wBefore
+      const label       = FIX_LABELS[fixType] || fixType
+
       saveContent(updated)
       const newScore = scoreContent(updated, relatedBrief, activeProject)
       saveScore(newScore)
       setActiveScoreId(newScore.id)
-      setFixLog(prev => [
+
+      // Per-fix status for inline badge
+      setFixStatus(prev => ({
         ...prev,
-        { type: fixType, label: FIX_LABELS[fixType] || fixType,
-          wordsBefore: selectedContent.wordCount || 0,
-          wordsAfter:  updated.wordCount || 0 },
-      ])
+        [idx]: { changed, wordsAdded, label, fixType,
+          newScore: newScore.overall, oldScore: activeScore?.overall ?? 0 },
+      }))
+
+      // Accumulate fix log (only when something actually changed)
+      if (changed) {
+        setFixLog(prev => [...prev, { type: fixType, label, wordsBefore: wBefore, wordsAfter: wAfter }])
+      }
+
+      // Debug log entry
+      setDebugLog(prev => [...prev, {
+        ts:              new Date().toLocaleTimeString(),
+        action:          `Apply Fix: ${label}`,
+        fixType,
+        changed,
+        wordsBefore:     wBefore,
+        wordsAfter:      wAfter,
+        wordsAdded,
+        scoreBefore:     activeScore?.overall ?? '–',
+        scoreAfter:      newScore.overall,
+        remainingIssues: (newScore.priorityFixes || []).length,
+      }])
+
       setApplying(prev => ({ ...prev, [idx]: false }))
     }, 800)
   }
@@ -158,19 +194,23 @@ export default function ContentScoreChecker() {
   function handleAutoFix(mode) {
     if (!selectedContent) return
     setAutoFixing(true)
-    setScoreBefore(activeScore?.overall ?? null)
+    const oldScore = activeScore?.overall ?? null
+    setScoreBefore(oldScore)
+    // Clear per-issue status badges since we're doing a batch run
+    setFixStatus({})
 
     setTimeout(() => {
+      const wBefore = selectedContent.wordCount || 0
       let result
 
       if (mode === 'placeholders') {
         const fixed = applyFix('placeholders', selectedContent, relatedBrief, activeProject)
-        const wBefore = selectedContent.wordCount || 0
-        const wAfter  = fixed.wordCount || 0
+        const changed = fixed.body !== selectedContent.body
         result = {
           content: fixed,
-          log: fixed.body !== selectedContent.body
-            ? [{ type: 'placeholders', label: 'Fix placeholder text', wordsBefore: wBefore, wordsAfter: wAfter }]
+          log: changed
+            ? [{ type: 'placeholders', label: 'Fix placeholder text',
+                wordsBefore: wBefore, wordsAfter: fixed.wordCount || 0 }]
             : [],
         }
       } else if (mode === 'critical') {
@@ -179,7 +219,6 @@ export default function ContentScoreChecker() {
           activeScore?.structuredIssues || [],
         )
       } else {
-        // 'all' — run the full auto-fix sequence
         result = autoFix(selectedContent, relatedBrief, activeProject)
       }
 
@@ -187,7 +226,22 @@ export default function ContentScoreChecker() {
       const newScore = scoreContent(result.content, relatedBrief, activeProject)
       saveScore(newScore)
       setActiveScoreId(newScore.id)
-      setFixLog(prev => [...prev, ...result.log])
+      if (result.log.length > 0) setFixLog(prev => [...prev, ...result.log])
+
+      // Debug log entry
+      setDebugLog(prev => [...prev, {
+        ts:              new Date().toLocaleTimeString(),
+        action:          `Auto-Fix (${mode})`,
+        changed:         result.log.length > 0,
+        fixesApplied:    result.log.map(e => e.label).join(', ') || 'none',
+        wordsBefore:     wBefore,
+        wordsAfter:      result.content.wordCount || 0,
+        wordsAdded:      (result.content.wordCount || 0) - wBefore,
+        scoreBefore:     oldScore ?? '–',
+        scoreAfter:      newScore.overall,
+        remainingIssues: (newScore.priorityFixes || []).length,
+      }])
+
       setAutoFixing(false)
     }, 1200)
   }
@@ -344,10 +398,63 @@ export default function ContentScoreChecker() {
                   autoFixing={autoFixing}
                   fixLog={fixLog}
                   scoreBefore={scoreBefore}
+                  fixStatus={fixStatus}
                   priorityFixes={activeScore.priorityFixes || []}
                   allIssues={activeScore.structuredIssues || activeScore.issues || []}
                 />
               </Card>
+
+              {/* Debug log panel */}
+              {debugLog.length > 0 && (
+                <div className="border border-slate-200 rounded-xl overflow-hidden">
+                  <button
+                    onClick={() => setShowDebug(v => !v)}
+                    className="w-full flex items-center justify-between px-4 py-2.5 bg-slate-100 hover:bg-slate-200 transition-colors text-left"
+                  >
+                    <span className="text-xs font-mono font-semibold text-slate-500">
+                      DEBUG LOG ({debugLog.length} operations)
+                    </span>
+                    <span className="text-xs text-slate-400">{showDebug ? '▲ hide' : '▼ show'}</span>
+                  </button>
+                  {showDebug && (
+                    <div className="p-3 bg-slate-950 overflow-x-auto">
+                      <table className="w-full text-xs font-mono text-slate-300 border-collapse">
+                        <thead>
+                          <tr className="text-slate-500 border-b border-slate-800">
+                            <th className="text-left pb-1 pr-3">Time</th>
+                            <th className="text-left pb-1 pr-3">Action</th>
+                            <th className="text-right pb-1 pr-3">Words before</th>
+                            <th className="text-right pb-1 pr-3">Words after</th>
+                            <th className="text-right pb-1 pr-3">Delta</th>
+                            <th className="text-right pb-1 pr-3">Score before</th>
+                            <th className="text-right pb-1 pr-3">Score after</th>
+                            <th className="text-right pb-1">Remaining</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {debugLog.map((entry, i) => (
+                            <tr key={i} className={`border-b border-slate-900 ${entry.changed ? 'text-green-400' : 'text-amber-400'}`}>
+                              <td className="py-1 pr-3 text-slate-500">{entry.ts}</td>
+                              <td className="py-1 pr-3 text-slate-200">{entry.action}</td>
+                              <td className="py-1 pr-3 text-right">{entry.wordsBefore?.toLocaleString()}</td>
+                              <td className="py-1 pr-3 text-right">{entry.wordsAfter?.toLocaleString()}</td>
+                              <td className="py-1 pr-3 text-right">{entry.wordsAdded > 0 ? `+${entry.wordsAdded}` : entry.wordsAdded || '0'}</td>
+                              <td className="py-1 pr-3 text-right">{entry.scoreBefore}</td>
+                              <td className="py-1 pr-3 text-right">{entry.scoreAfter}</td>
+                              <td className="py-1 text-right">{entry.remainingIssues ?? '–'} issues</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {debugLog.some(e => !e.changed) && (
+                        <p className="mt-2 text-xs text-amber-400 font-mono">
+                          ⚠ Amber rows = fix ran but content was already in target state (guard triggered). Check console for details.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {activeScore.overall >= 70 && (
                 <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-xl">

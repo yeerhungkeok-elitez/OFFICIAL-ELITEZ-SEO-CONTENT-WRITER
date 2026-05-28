@@ -60,13 +60,14 @@ function MetaChangeRow({ field, before, after }) {
 
 // ── Issue card with Preview / Apply / Ignore ──────────────────────────────────
 
-function FixIssueCard({ fix, idx, content, brief, project, onApply, applying, ignored, onIgnore }) {
+function FixIssueCard({ fix, idx, content, brief, project, onApply, applying, ignored, onIgnore, status }) {
   const [showPreview, setShowPreview] = useState(false)
   const [previewDiff, setPreviewDiff] = useState(null)
 
-  const fixType  = getFixType(fix)
-  const safety   = fixType ? FIX_SAFETY[fixType] : null
+  const fixType    = getFixType(fix)
+  const safety     = fixType ? FIX_SAFETY[fixType] : null
   const isApplying = applying[idx]
+  // status = { changed, wordsAdded, label, fixType, newScore, oldScore } | null
 
   function handlePreview() {
     if (showPreview) { setShowPreview(false); return }
@@ -128,6 +129,22 @@ function FixIssueCard({ fix, idx, content, brief, project, onApply, applying, ig
             -{fix.pts} pts
           </span>
           {safety && <SafetyBadge level={safety} />}
+
+          {/* Per-fix result badge */}
+          {status && !isApplying && (
+            status.changed ? (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-green-100 text-green-700 text-xs rounded font-medium">
+                <CheckCircle size={10} />
+                Applied{status.wordsAdded > 0 ? ` (+${status.wordsAdded} words)` : ''}
+                {status.newScore > status.oldScore ? ` · Score +${status.newScore - status.oldScore}` : ''}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-100 text-amber-700 text-xs rounded font-medium">
+                <AlertTriangle size={10} />
+                Still needs review — content already meets this criteria
+              </span>
+            )
+          )}
 
           <div className="ml-auto flex items-center gap-1.5">
             {fixType && (
@@ -235,6 +252,7 @@ export default function AutoFixPanel({
   autoFixing,        // bool
   fixLog,            // [{ type, label, wordsBefore, wordsAfter }]
   scoreBefore,       // number — score before auto-fix
+  fixStatus,         // { [idx]: { changed, wordsAdded, label, newScore, oldScore } }
   priorityFixes,     // array from score
   allIssues,         // structured issues array
 }) {
@@ -389,6 +407,7 @@ export default function AutoFixPanel({
                 applying={applying}
                 ignored={ignoredIdxs.has(i)}
                 onIgnore={() => toggleIgnore(i)}
+                status={fixStatus?.[i] ?? null}
               />
             ))}
           </div>
