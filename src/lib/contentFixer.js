@@ -5,6 +5,9 @@
 // No API calls — all content is generated from templates + context fields.
 // ═══════════════════════════════════════════════════════════════════════════════
 
+import { fixPlaceholders }            from './placeholderFixer'
+import { fixFocusKeyphraseInIntro, fixMetaTitle, fixMetaDescription } from './seoContentFixer'
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function countWords(text) {
@@ -270,46 +273,78 @@ function fixAddProcess(content, brief, project) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export function getFixType(fix) {
-  const cat = fix.cat || fix.category || ''
+  const cat = (fix.cat || fix.category || '').replace(/ /g, '')
   const msg = (fix.msg || '').toLowerCase()
 
-  if (cat === 'Helpful') {
-    if (/faq|frequently asked/.test(msg))             return 'faq'
-    if (/process|how it works|no process/.test(msg))  return 'process'
-    if (/decision|evaluat|what to look|criteria|doesn.t help reader/.test(msg)) return 'decisions'
+  // SEO / SEO Readiness
+  if (/^seo/i.test(cat)) {
+    if (/absent from the meta title|missing.*meta title|meta title.*missing/.test(msg)) return 'metaTitle'
+    if (/meta description.*missing|missing.*meta description/.test(msg))               return 'metaDescription'
+    if (/doesn.t appear in the first|first 200 words|missing from.*intro/.test(msg))   return 'keyphraseInIntro'
+    return null // H1, slug, density → manual
+  }
+
+  // Helpful Content
+  if (/helpful/i.test(cat)) {
+    if (/placeholder|bracketed|\[add /.test(msg))                                         return 'placeholders'
+    if (/faq|frequently asked/.test(msg))                                                 return 'faq'
+    if (/process|how it works|no process/.test(msg))                                      return 'process'
+    if (/decision|evaluat|what to look|criteria|doesn.t help reader/.test(msg))           return 'decisions'
     return null
   }
 
-  if (cat === 'Conversion') {
-    if (/no clear call.to.action|cta.*missing|missing.*cta|what.*should.*do.*next|doesn.t clearly state|signposted once|no clear reference/.test(msg)) return 'cta'
-    if (/call.to.action|cta/.test(msg)) return 'cta'
+  // Conversion
+  if (/conversion/i.test(cat)) {
+    if (/cta|call.to.action|next step|what.*do next|no clear reference|signposted once/.test(msg)) return 'cta'
     return null
   }
 
-  if (cat === 'Links') {
-    if (/anchor text|generic anchor/.test(msg)) return null  // manual edit required
+  // Links / Internal Links
+  if (/links?/i.test(cat)) {
+    if (/anchor text|generic anchor/.test(msg)) return null // manual
     return 'links'
   }
 
-  if (cat === 'Local') return 'local'
+  // Local Relevance
+  if (/local/i.test(cat)) return 'local'
 
-  if (cat === 'Readability') {
+  // Readability
+  if (/readability/i.test(cat)) {
     if (/paragraph|text wall/.test(msg)) return 'paragraphs'
-    return null // sentence length, heading count → manual edit
+    return null
   }
 
-  return null // SEO technical fixes (meta title, slug, density) → manual
+  return null
+}
+
+// Fix safety levels — used to decide what autoFix applies without user prompt
+export const FIX_SAFETY = {
+  placeholders:     'safe',   // replaces incomplete copy with generic useful copy
+  keyphraseInIntro: 'safe',   // adds one sentence — non-destructive
+  metaTitle:        'safe',   // improves keyword + length
+  metaDescription:  'safe',   // improves keyword + length
+  faq:              'safe',   // adds new section
+  cta:              'safe',   // adds new section
+  links:            'safe',   // adds new section
+  decisions:        'safe',   // adds new section
+  process:          'safe',   // adds new section
+  paragraphs:       'safe',   // splits long paragraphs at sentence boundary
+  local:            'safe',   // adds local context paragraph
 }
 
 // Human-readable labels for each fix type
 export const FIX_LABELS = {
-  faq:        'Add FAQ Section',
-  process:    'Add How-It-Works Section',
-  decisions:  'Add Evaluation Criteria',
-  cta:        'Add CTA Section',
-  links:      'Add Related Reading',
-  local:      'Add Local Context',
-  paragraphs: 'Split Long Paragraphs',
+  placeholders:     'Fix Placeholder Text',
+  keyphraseInIntro: 'Add Keyphrase to Intro',
+  metaTitle:        'Improve Meta Title',
+  metaDescription:  'Improve Meta Description',
+  faq:              'Add FAQ Section',
+  process:          'Add How-It-Works Section',
+  decisions:        'Add Evaluation Criteria',
+  cta:              'Add CTA Section',
+  links:            'Add Related Reading',
+  local:            'Add Local Context',
+  paragraphs:       'Split Long Paragraphs',
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -318,15 +353,94 @@ export const FIX_LABELS = {
 
 export function applyFix(fixType, content, brief, project) {
   const FIXERS = {
-    cta:       fixAddCTA,
-    faq:       fixAddFAQ,
-    links:     fixAddInternalLinks,
-    local:     fixAddLocalContext,
-    paragraphs: fixLongParagraphs,
-    decisions: fixAddDecisionFactors,
-    process:   fixAddProcess,
+    placeholders:     fixPlaceholders,
+    keyphraseInIntro: fixFocusKeyphraseInIntro,
+    metaTitle:        fixMetaTitle,
+    metaDescription:  fixMetaDescription,
+    cta:              fixAddCTA,
+    faq:              fixAddFAQ,
+    links:            fixAddInternalLinks,
+    local:            fixAddLocalContext,
+    paragraphs:       fixLongParagraphs,
+    decisions:        fixAddDecisionFactors,
+    process:          fixAddProcess,
   }
   const fn = FIXERS[fixType]
   if (!fn) return content
   return fn(content, brief, project)
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// AUTO-FIX: runs all safe fixes sequentially and returns a log
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const AUTO_FIX_SEQUENCE = [
+  { type: 'placeholders',     label: 'Fix placeholder text' },
+  { type: 'keyphraseInIntro', label: 'Add focus keyphrase to intro' },
+  { type: 'metaTitle',        label: 'Improve meta title' },
+  { type: 'metaDescription',  label: 'Improve meta description' },
+  { type: 'paragraphs',       label: 'Split long paragraphs' },
+  { type: 'faq',              label: 'Add FAQ section' },
+  { type: 'cta',              label: 'Add CTA section' },
+  { type: 'links',            label: 'Add related reading section' },
+  { type: 'decisions',        label: 'Add evaluation criteria section' },
+  { type: 'process',          label: 'Add process section' },
+  { type: 'local',            label: 'Add local market context' },
+]
+
+export function autoFix(content, brief, project) {
+  let current = { ...content }
+  const log = []
+
+  for (const { type, label } of AUTO_FIX_SEQUENCE) {
+    const bodyBefore = current.body
+    const metaBefore = current.metaTitle + '|||' + current.metaDescription
+    const updated = applyFix(type, current, brief, project)
+    const changed  = updated.body !== bodyBefore
+      || (updated.metaTitle + '|||' + updated.metaDescription) !== metaBefore
+    if (changed) {
+      log.push({
+        type,
+        label,
+        wordsBefore: countWords(bodyBefore),
+        wordsAfter:  updated.wordCount || countWords(updated.body),
+      })
+      current = updated
+    }
+  }
+
+  return { content: current, log }
+}
+
+// Runs only fixes that correspond to high-impact issues (pts >= threshold)
+export function fixCriticalIssues(content, brief, project, issues, threshold = 15) {
+  let current = { ...content }
+  const log = []
+  const applied = new Set()
+
+  const criticalIssues = (issues || []).filter(i => (i.pts || 0) >= threshold)
+
+  for (const issue of criticalIssues) {
+    const fixType = getFixType(issue)
+    if (!fixType || applied.has(fixType)) continue
+
+    const bodyBefore = current.body
+    const metaBefore = current.metaTitle + '|||' + current.metaDescription
+    const updated = applyFix(fixType, current, brief, project)
+    const changed  = updated.body !== bodyBefore
+      || (updated.metaTitle + '|||' + updated.metaDescription) !== metaBefore
+
+    if (changed) {
+      log.push({
+        type:        fixType,
+        label:       FIX_LABELS[fixType] || fixType,
+        wordsBefore: countWords(bodyBefore),
+        wordsAfter:  updated.wordCount || countWords(updated.body),
+      })
+      applied.add(fixType)
+      current = updated
+    }
+  }
+
+  return { content: current, log }
 }

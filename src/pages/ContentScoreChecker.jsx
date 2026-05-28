@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { BarChart2, Zap, ChevronRight, AlertTriangle, CheckCircle, Search, Heart, Link2, TrendingUp, BookOpen, MapPin, Star, Wrench, Key } from 'lucide-react'
 import { useProject } from '../context/ProjectContext'
 import { scoreContent, getScoreColor } from '../lib/scoreChecker'
-import { applyFix, getFixType, FIX_LABELS } from '../lib/contentFixer'
+import { applyFix, getFixType, FIX_LABELS, autoFix, fixCriticalIssues } from '../lib/contentFixer'
+import AutoFixPanel from '../components/fixer/AutoFixPanel'
 import Card, { CardHeader, Divider } from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
@@ -105,10 +106,13 @@ function GradePanel({ score, publishReadiness }) {
 export default function ContentScoreChecker() {
   const { activeProject, saveScore, saveContent } = useProject()
   const navigate = useNavigate()
-  const [scoring, setScoring]   = useState(false)
+  const [scoring, setScoring]           = useState(false)
   const [activeScoreId, setActiveScoreId] = useState(null)
   const [selectedContentId, setSelectedContentId] = useState(null)
-  const [applying, setApplying] = useState({}) // { [fixIndex]: true } while applying
+  const [applying, setApplying]         = useState({})   // { [fixIndex]: bool }
+  const [autoFixing, setAutoFixing]     = useState(false)
+  const [fixLog, setFixLog]             = useState([])   // fix history for current session
+  const [scoreBefore, setScoreBefore]   = useState(null) // score before last auto-fix batch
 
   const contents = activeProject?.generatedContent || []
   const briefs   = activeProject?.briefs || []
@@ -140,8 +144,52 @@ export default function ContentScoreChecker() {
       const newScore = scoreContent(updated, relatedBrief, activeProject)
       saveScore(newScore)
       setActiveScoreId(newScore.id)
+      setFixLog(prev => [
+        ...prev,
+        { type: fixType, label: FIX_LABELS[fixType] || fixType,
+          wordsBefore: selectedContent.wordCount || 0,
+          wordsAfter:  updated.wordCount || 0 },
+      ])
       setApplying(prev => ({ ...prev, [idx]: false }))
     }, 800)
+  }
+
+  // Batch fix modes: 'all' | 'critical' | 'placeholders'
+  function handleAutoFix(mode) {
+    if (!selectedContent) return
+    setAutoFixing(true)
+    setScoreBefore(activeScore?.overall ?? null)
+
+    setTimeout(() => {
+      let result
+
+      if (mode === 'placeholders') {
+        const fixed = applyFix('placeholders', selectedContent, relatedBrief, activeProject)
+        const wBefore = selectedContent.wordCount || 0
+        const wAfter  = fixed.wordCount || 0
+        result = {
+          content: fixed,
+          log: fixed.body !== selectedContent.body
+            ? [{ type: 'placeholders', label: 'Fix placeholder text', wordsBefore: wBefore, wordsAfter: wAfter }]
+            : [],
+        }
+      } else if (mode === 'critical') {
+        result = fixCriticalIssues(
+          selectedContent, relatedBrief, activeProject,
+          activeScore?.structuredIssues || [],
+        )
+      } else {
+        // 'all' — run the full auto-fix sequence
+        result = autoFix(selectedContent, relatedBrief, activeProject)
+      }
+
+      saveContent(result.content)
+      const newScore = scoreContent(result.content, relatedBrief, activeProject)
+      saveScore(newScore)
+      setActiveScoreId(newScore.id)
+      setFixLog(prev => [...prev, ...result.log])
+      setAutoFixing(false)
+    }, 1200)
   }
 
   if (!activeProject) {
@@ -276,85 +324,30 @@ export default function ContentScoreChecker() {
                 </Card>
               )}
 
-              {/* Priority Fixes */}
-              {activeScore.priorityFixes?.length > 0 && (
-                <Card>
-                  <CardHeader
-                    title="Priority Fixes"
-                    subtitle="Highest-impact improvements — address these first"
-                    icon={AlertTriangle}
-                    badge={`${activeScore.priorityFixes.length} items`}
-                  />
-                  <div className="space-y-3">
-                    {activeScore.priorityFixes.map((fix, i) => {
-                      const fixType   = getFixType(fix)
-                      const isApplying = applying[i]
-                      return (
-                        <div key={i} className="p-3 bg-red-50 border border-red-100 rounded-xl">
-                          <div className="flex items-start gap-2 mb-1.5">
-                            <AlertTriangle size={14} className="text-red-500 flex-shrink-0 mt-0.5" />
-                            <span className="text-sm font-semibold text-red-800">{fix.msg}</span>
-                          </div>
-                          {fix.fix && (
-                            <p className="text-xs text-red-700 ml-5 leading-relaxed">
-                              <span className="font-semibold">Fix: </span>{fix.fix}
-                            </p>
-                          )}
-                          <div className="ml-5 mt-2 flex items-center gap-2 flex-wrap">
-                            <span className="text-xs px-1.5 py-0.5 bg-red-100 text-red-600 rounded font-medium">
-                              {fix.cat || fix.category} · -{fix.pts} pts
-                            </span>
-                            {fixType ? (
-                              <button
-                                onClick={() => handleApplyFix(fix, i)}
-                                disabled={isApplying}
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg bg-white border border-brand-300 text-brand-700 hover:bg-brand-50 hover:border-brand-400 transition-all disabled:opacity-60 disabled:cursor-not-allowed shadow-sm"
-                              >
-                                {isApplying ? (
-                                  <>
-                                    <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none">
-                                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25" />
-                                      <path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="4" className="opacity-75" />
-                                    </svg>
-                                    Applying…
-                                  </>
-                                ) : (
-                                  <>
-                                    <Wrench size={11} />
-                                    {FIX_LABELS[fixType] || 'Apply Fix'}
-                                  </>
-                                )}
-                              </button>
-                            ) : (
-                              <span className="text-xs text-slate-400 italic">Manual edit required</span>
-                            )}
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </Card>
-              )}
-
-              {/* All Issues */}
-              {activeScore.issues?.length > 0 && (
-                <Card>
-                  <CardHeader
-                    title="All Improvements"
-                    subtitle={`${activeScore.issues.length} issue${activeScore.issues.length > 1 ? 's' : ''} found`}
-                    icon={AlertTriangle}
-                    badge={`${activeScore.issues.length} items`}
-                  />
-                  <div className="space-y-2">
-                    {activeScore.issues.map((issue, i) => (
-                      <div key={i} className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-100 rounded-xl">
-                        <AlertTriangle size={15} className="text-amber-500 flex-shrink-0 mt-0.5" />
-                        <span className="text-sm text-amber-800">{issue}</span>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-              )}
+              {/* Auto-Fix Panel — replaces Priority Fixes + All Issues cards */}
+              <Card>
+                <CardHeader
+                  title="Recommended Fixes"
+                  subtitle="Auto-apply safe fixes or address issues one by one"
+                  icon={AlertTriangle}
+                  badge={activeScore.priorityFixes?.length ? `${activeScore.priorityFixes.length} priority` : undefined}
+                />
+                <AutoFixPanel
+                  score={activeScore.overall}
+                  content={selectedContent}
+                  brief={relatedBrief}
+                  project={activeProject}
+                  onApplyFix={handleApplyFix}
+                  onAutoFix={handleAutoFix}
+                  onReScore={handleScore}
+                  applying={applying}
+                  autoFixing={autoFixing}
+                  fixLog={fixLog}
+                  scoreBefore={scoreBefore}
+                  priorityFixes={activeScore.priorityFixes || []}
+                  allIssues={activeScore.structuredIssues || activeScore.issues || []}
+                />
+              </Card>
 
               {activeScore.overall >= 70 && (
                 <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-xl">
